@@ -47,4 +47,5 @@ func main() {
 ```
 $ go run serve.go
 $ curl "http://localhost:8000/api?action=search&q=example"
+[{"ID":1,"URL":"http://example.com","Tags":["example"]}]
 ```
