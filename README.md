@@ -1,4 +1,6 @@
 # db
+[![godoc db](http://b.repl.ca/v1/godoc-db-blue.png)](https://godoc.org/github.com/bvanrijn/db)
+
 A simple database system
 
 ## `add.go`
