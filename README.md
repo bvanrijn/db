@@ -1,7 +1,7 @@
 # db
 [![GoDoc](https://godoc.org/github.com/bvanrijn/db?status.svg)](https://godoc.org/github.com/bvanrijn/db)
 
-A simple database system
+A simple database system for URLs and tags
 
 ## `add.go`
 ```go
