@@ -21,10 +21,11 @@ type Record struct {
 // Database holds Records
 type Database struct {
 	Records          []Record
-	CachedItemsCount int
+	SearchCacheCount int
 	ZeroResultsCount int
 
-	zeroResultsCache []string
+	searchResultCache map[string][]Record
+	zeroResultsCache  []string
 }
 
 // Add a Record to a Database
@@ -35,12 +36,15 @@ func (database *Database) Add(record Record) {
 // Search a Database
 func (database *Database) Search(searchTerm string) []Record {
 	var result []Record
+
 	var putInZeroCache = true
+	var putInResultCache = true
 
 	var timeStart = time.Now()
 
-	for _, cachedSearch := range database.zeroResultsCache {
-		if cachedSearch == searchTerm {
+	// first, search the zero cache
+	for _, cachedZeroSearch := range database.zeroResultsCache {
+		if cachedZeroSearch == searchTerm {
 			var timeEnd = time.Now()
 			var msg = "cached search for '%s' completed in %v with 0 results"
 
@@ -54,6 +58,22 @@ func (database *Database) Search(searchTerm string) []Record {
 		}
 	}
 
+	// then, search the normal cache
+	if _, ok := database.searchResultCache[searchTerm]; ok {
+		var timeEnd = time.Now()
+		var msg = "search for '%s' completed in %v with %d result"
+
+		putInResultCache = false
+		result := database.searchResultCache[searchTerm]
+
+		msg = fmt.Sprintf(msg, searchTerm, timeEnd.Sub(timeStart), len(result))
+
+		log.Printf(msg)
+
+		return result
+	}
+
+	// lastly, search the database
 	for _, record := range database.Records {
 		for _, tag := range record.Tags {
 			if tag == searchTerm {
@@ -72,7 +92,11 @@ func (database *Database) Search(searchTerm string) []Record {
 		database.ZeroResultsCount++
 	}
 
-	if len(result) > 1 {
+	if putInResultCache {
+		// TODO
+	}
+
+	if len(result) != 1 {
 		msg = msg + "s"
 	}
 
