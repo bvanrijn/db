@@ -44,7 +44,7 @@ func (database *Database) Search(searchTerm string) []Record {
 
 	// first, search the zero cache
 	for _, cachedZeroSearch := range database.zeroResultsCache {
-		if cachedZeroSearch == searchTerm {
+		if searchTerm == cachedZeroSearch {
 			var timeEnd = time.Now()
 			var msg = "cached search for '%s' completed in %v with 0 results"
 
@@ -64,6 +64,8 @@ func (database *Database) Search(searchTerm string) []Record {
 		var msg = "search for '%s' completed in %v with %d result"
 
 		putInResultCache = false
+		database.searchResultCache = make(map[string][]Record)
+
 		result := database.searchResultCache[searchTerm]
 
 		msg = fmt.Sprintf(msg, searchTerm, timeEnd.Sub(timeStart), len(result))
@@ -71,6 +73,7 @@ func (database *Database) Search(searchTerm string) []Record {
 		log.Printf(msg)
 
 		return result
+
 	}
 
 	// lastly, search the database
@@ -87,17 +90,19 @@ func (database *Database) Search(searchTerm string) []Record {
 
 	var msg = "search for '%s' completed in %v with %d result"
 
+	if len(result) != 1 {
+		msg = msg + "s"
+	}
+
 	if len(result) == 0 && putInZeroCache {
 		database.zeroResultsCache = append(database.zeroResultsCache, searchTerm)
 		database.ZeroResultsCount++
 	}
 
 	if putInResultCache {
-		// TODO
-	}
-
-	if len(result) != 1 {
-		msg = msg + "s"
+		database.searchResultCache = make(map[string][]Record)
+		database.searchResultCache[searchTerm] = result
+		database.SearchCacheCount++
 	}
 
 	msg = fmt.Sprintf(msg, searchTerm, timeEnd.Sub(timeStart), len(result))
