@@ -2,11 +2,13 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // Record represents a database record
@@ -18,7 +20,11 @@ type Record struct {
 
 // Database holds Records
 type Database struct {
-	Records []Record
+	Records          []Record
+	CachedItemsCount int
+	ZeroResultsCount int
+
+	zeroResultsCache []string
 }
 
 // Add a Record to a Database
@@ -29,6 +35,24 @@ func (database *Database) Add(record Record) {
 // Search a Database
 func (database *Database) Search(searchTerm string) []Record {
 	var result []Record
+	var putInZeroCache = true
+
+	var timeStart = time.Now()
+
+	for _, cachedSearch := range database.zeroResultsCache {
+		if cachedSearch == searchTerm {
+			var timeEnd = time.Now()
+			var msg = "cached search for '%s' completed in %v with 0 results"
+
+			putInZeroCache = false
+
+			msg = fmt.Sprintf(msg, searchTerm, timeEnd.Sub(timeStart))
+
+			log.Printf(msg)
+
+			return nil
+		}
+	}
 
 	for _, record := range database.Records {
 		for _, tag := range record.Tags {
@@ -38,6 +62,23 @@ func (database *Database) Search(searchTerm string) []Record {
 			}
 		}
 	}
+
+	var timeEnd = time.Now()
+
+	var msg = "search for '%s' completed in %v with %d result"
+
+	if len(result) == 0 && putInZeroCache {
+		database.zeroResultsCache = append(database.zeroResultsCache, searchTerm)
+		database.ZeroResultsCount++
+	}
+
+	if len(result) > 1 {
+		msg = msg + "s"
+	}
+
+	msg = fmt.Sprintf(msg, searchTerm, timeEnd.Sub(timeStart), len(result))
+
+	log.Printf(msg)
 
 	return result
 }
@@ -97,10 +138,10 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 // Serve starts an HTTP server to query the Database
 func (database *Database) Serve(port int) {
+	log.Printf("DB server running on port %d...\n", port)
 	http.HandleFunc("/", index)
 	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 		api(w, r, database)
 	})
 	http.ListenAndServe(":"+strconv.Itoa(port), nil)
-	log.Printf("DB server running on port %d...\n", port)
 }
